@@ -1,8 +1,12 @@
 import requests
 from lxml import html
 import getpass
+from os import path
 
-password = getpass.getpass(prompt = 'heslo: ', stream=None)
+dir_path = path.dirname(path.realpath(__file__))        #directory where saldo.py sits
+file1 = open(dir_path + '\\pwd.txt', 'r')
+password = file1.read()
+#password = getpass.getpass(prompt = 'heslo: ', stream=None)
 payload = {
     'loginname': 'pkrssak',
     'loginpassword': password
@@ -18,81 +22,114 @@ def min2str(min1):
     'converts minutes to hour string'
     mins = min1%60
     hrs = min1//60
-    return str(hrs)+':'+str(mins)
+    return str(hrs)+':'+str(mins).zfill(2)
 
-session_requests = requests.session()
+class web_scrape():
+    'web scraping class'
+    def __init__(self):
+        self.session_requests = requests.session()
+    def get_tree(self, url, payload):
+        """
+        gets html tree from url
+        provide(url, payload)
+            payload = dictionary of login data
+        """
+        self.result = self.session_requests.post(
+            url,
+            data = payload,
+            headers = dict(referer=url)
+        )
+        #print(self.result.text)
+        self.tree = html.fromstring(self.result.content)
+        return self.tree
+
+class ron_data_extract():
+    'extracts data from html tree'
+    def __init__(self):
+        self.laststart = 0
+    def get_overtime(self, tree):
+        'gets overtime until today'
+        self.overtime_str = tree.xpath('//tr[@class="browsercolor2 mv_110"]/td[@class="hodiny"]/text()')[0]
+        self.overtime_mins = str2min(self.overtime_str)
+        print('nadcas do vcera: ', self.overtime_str)
+        return self.overtime_mins
+    def analyze_day(self, tree):
+        'decomposes day data and creates times and operations lists'
+        #today1 = tree.xpath('//tr[@class="today "]/td[@class="browser_rowheader"]/text()')
+        today1 = tree.xpath('//tr[@class="today "]/td/text()')
+        print("dnes je: ", today1[0])
+        today2 = tree.xpath('//tr/td/text()')
+        today3 = today1 #today2[6:10]
+        #print('today2: ', today3)
+
+        self.times = []
+        self.operations = []
+        for i in range(1, len(today3)):             #creates times and operations lists
+            a, b = today3[i].split(' &nbsp ')
+            self.times.append(a)
+            self.operations.append(b)
+        print('analyza dna:')
+        print('   casy: ', self.times)
+        print('   operacie', self.operations)
+    def get_worktime(self):
+        'calculates todays wortime'
+        self.worktime = 0
+        print('analyza pracovneho casu:')
+        for i in range(len(self.operations)):            #counts worktime
+            if self.operations[i] == 'Príchod / Práca':
+                a = str2min(self.times[i])
+                self.laststart = i
+                print('   i:', i, 'a: ', a)
+            elif a != 0 and self.operations[i] != 'Príchod / Práca':
+                b = str2min(self.times[i])
+                print('   i:', i, 'b: ', b)
+                self.worktime = self.worktime + b - a
+                a = 0
+                b = 0
+        print('   pracovny cas do posledneho prichodu: ', min2str(self.worktime))
+        return self.worktime
+    def get_lunch(self):
+        'calculates lunch correction'
+        c = 0
+        d = 0
+        self.lunchcorrection = 0
+        for i in range(len(self.operations)):            #counts lunchtime and its correction
+            if self.operations[i] == 'Obed':
+                c = str2min(self.times[i])
+            elif c !=0 and self.operations[i] == 'Príchod / Práca':
+                d = str2min(self.times[i])
+        self.lunch = d - c
+        print('obed dnes: ', min2str(self.lunch))
+        if self.lunch < 30:
+            self.lunchcorrection = 30 - self.lunch
+        print('korekcia obedovej prestavky: ', min2str(self.lunchcorrection))
+        return self.lunch, self.lunchcorrection
+    def get_laststart(self):
+        try:
+            lasttime = self.times[self.laststart]
+        except IndexError:
+            lasttime = '8:00'
+        print('posledny prichod: ', lasttime)
+        return str2min(lasttime)
+
+#main script
 doch_url = 'http://ron.dqi.sk/ads.php?menuid=dochazkazamestnance'
 month_res_url = 'http://ron.dqi.sk/ads.php?menuid=mesicnivysledky'
-login_url = month_res_url
-spr_doch = 'http://ron.dqi.sk/ads.php?menuid=zpracovanadochazka'
 
-result = session_requests.post(
-    login_url,
-    data = payload,
-    headers = dict(referer=login_url)
-)
+wscr = web_scrape()
+rde = ron_data_extract()
+tree = wscr.get_tree(month_res_url, payload)
+overtime = rde.get_overtime(tree)
 
-tree = html.fromstring(result.content)
+tree = wscr.get_tree(doch_url, payload)
+rde.analyze_day(tree)
+worktime = rde.get_worktime()
+lunch, lunchcorrection = rde.get_lunch()
+laststart = rde.get_laststart()
 
-sadlo = tree.xpath('//td[@class="hodiny"]/text()')
-sadlo2 = tree.xpath('//tr[@class="browsercolor2 mv_110"]/td[@class="hodiny"]/text()')
-
-#print(result.text)
-#print('nadcas do vcera: ', sadlo2)
-print('nadcas do vcera (min): ', str2min(sadlo2[0]))
-
-login_url = doch_url
-result = session_requests.get(
-    login_url,
-    headers = dict(referer=login_url)
-)
-#print(result.text)
-
-tree = html.fromstring(result.content)
-today1 = tree.xpath('//tr[@class="today "]/td[@class="browser_rowheader"]/text()')
-print("today: ", today1)
-today2 = tree.xpath('//tr/td/text()')
-today3 = today2[6:10]
-print('today2: ', today3)
-
-times = []
-operations = []
-for i in range(1, len(today3)):             #creates times and operations lists
-    a, b = today3[i].split(' &nbsp ')
-    times.append(a)
-    operations.append(b)
-
-print(times)
-print(operations)
-
-worktime = 0
-for i in range(len(operations)):            #counts worktime
-    if operations[i] == 'Príchod / Práca':
-        a = str2min(times[i])
-        laststart = i
-        print('i:', i, 'a: ', a)
-    elif a != 0 and operations[i] != 'Príchod / Práca':
-        b = str2min(times[i])
-        print('i:', i, 'b: ', b)
-        worktime = worktime + b - a
-        a = 0
-        b = 0
-c = 0
-d = 0
-lunchcorrection = 0
-for i in range(len(operations)):            #counts lunchtime and its correction
-    if operations[i] == 'Obed':
-        c = str2min(times[i])
-    elif c !=0 and operations[i] == 'Príchod / Práca':
-        d = str2min(times[i])
-lunch = d - c
-if lunch < 30:
-    lunchcorrection = 30 - lunch
-
-print('obed: ', min2str(lunch))
-print('pracovny cas: ', worktime, 'mins, hrs: ', min2str(worktime))
-todayend = 480 - worktime - str2min(sadlo2[0]) + str2min(times[laststart]) + lunchcorrection 
+todayend = 8*60 - worktime - overtime + laststart + lunchcorrection
 print('dnes odchod, 0 saldo: ', min2str(todayend))
 
-todayend8hrs = 480 - worktime + str2min(times[laststart]) + lunchcorrection
+todayend8hrs = 8*60 - worktime + laststart + lunchcorrection
 print('dnes odchod, 8 hodin: ', min2str(todayend8hrs))
+input()
