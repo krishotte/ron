@@ -108,7 +108,7 @@ class ron_data_extract():
             if self.operations[i] == 'Obed':
                 c = str2min(self.times[i])
                 obed_index = i
-            elif c !=0 and self.operations[i] == 'Príchod / Práca':
+            elif (c !=0 and self.operations[i] == 'Príchod / Práca') and d==0:
                 d = str2min(self.times[i])
         if d > c:
             self.lunch = d - c
