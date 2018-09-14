@@ -13,16 +13,25 @@ payload = {
 }
 
 def str2min(str1):
-    'converts string to min int'
+    'converts string to min int' 
     min1,min2 = str1.split(':')
-    mintotal = int(min1)*60+int(min2)
+    if str1[0] == '-':
+        mintotal = -(int(min1)*60+int(min2))
+    else:
+        mintotal = int(min1)*60+int(min2)
     return mintotal
 
 def min2str(min1):
     'converts minutes to hour string'
-    mins = min1%60
-    hrs = min1//60
-    return str(hrs)+':'+str(mins).zfill(2)
+    if min1 >= 0:
+        mins = min1%60
+        hrs = min1//60
+        strhrs = str(hrs)
+    else:
+        mins = abs(min1)%60
+        hrs = abs(min1)//60
+        strhrs = '-' + str(hrs)
+    return strhrs+':'+str(mins).zfill(2)
 
 class web_scrape():
     'web scraping class'
@@ -47,6 +56,7 @@ class ron_data_extract():
     'extracts data from html tree'
     def __init__(self):
         self.laststart = 0
+        self.leave = 0
     def get_overtime(self, tree):
         'gets overtime until today'
         self.overtime_str = tree.xpath('//tr[@class="browsercolor2 mv_110"]/td[@class="hodiny"]/text()')[0]
@@ -59,7 +69,7 @@ class ron_data_extract():
         today1 = tree.xpath('//tr[@class="today "]/td/text()')
         print("dnes je: ", today1[0])
         today2 = tree.xpath('//tr/td/text()')
-        today3 = today1 #today2[6:10]
+        today3 = today1 #[0:5] #today2[6:10]
         #print('today2: ', today3)
 
         self.times = []
@@ -78,10 +88,11 @@ class ron_data_extract():
         for i in range(len(self.operations)):            #counts worktime
             if self.operations[i] == 'Príchod / Práca':
                 a = str2min(self.times[i])
-                self.laststart = i
+                self.laststart_index = i
                 print('   i:', i, 'a: ', a)
             elif a != 0 and self.operations[i] != 'Príchod / Práca':
                 b = str2min(self.times[i])
+                self.lastrecord_index = i
                 print('   i:', i, 'b: ', b)
                 self.worktime = self.worktime + b - a
                 a = 0
@@ -89,16 +100,21 @@ class ron_data_extract():
         print('   pracovny cas do posledneho prichodu: ', min2str(self.worktime))
         return self.worktime
     def get_lunch(self):
-        'calculates lunch correction'
+        'calculates lunch and its correction'
         c = 0
         d = 0
         self.lunchcorrection = 0
-        for i in range(len(self.operations)):            #counts lunchtime and its correction
+        for i in range(len(self.operations)):            
             if self.operations[i] == 'Obed':
                 c = str2min(self.times[i])
+                obed_index = i
             elif c !=0 and self.operations[i] == 'Príchod / Práca':
                 d = str2min(self.times[i])
-        self.lunch = d - c
+        if d > c:
+            self.lunch = d - c
+        else:
+            self.lunch = 30
+            self.lunchcorrection = 30
         print('obed dnes: ', min2str(self.lunch))
         if self.lunch < 30:
             self.lunchcorrection = 30 - self.lunch
@@ -106,12 +122,24 @@ class ron_data_extract():
         return self.lunch, self.lunchcorrection
     def get_laststart(self):
         try:
-            lasttime = self.times[self.laststart]
-        except IndexError:
+            lasttime = self.times[self.laststart_index]
+        except (IndexError, AttributeError):
             lasttime = '8:00'
+        try:
+            if (self.laststart_index <= self.lastrecord_index) and (self.operations[self.lastrecord_index] != 'Odchod'):
+                lasttime = self.times[self.lastrecord_index]
+                print('chyba prichod!')
+        except:
+            pass
         print('posledny prichod: ', lasttime)
         return str2min(lasttime)
-
+    def check_leave(self):
+        'checks if person left the work'
+        self.left = False
+        for i in range(len(self.operations)):            
+            if self.operations[i] == 'Odchod':
+                self.left = True
+        return self.left
 #main script
 doch_url = 'http://ron.dqi.sk/ads.php?menuid=dochazkazamestnance'
 month_res_url = 'http://ron.dqi.sk/ads.php?menuid=mesicnivysledky'
@@ -126,10 +154,15 @@ rde.analyze_day(tree)
 worktime = rde.get_worktime()
 lunch, lunchcorrection = rde.get_lunch()
 laststart = rde.get_laststart()
+left = rde.check_leave()
+if left==True:
+    overtimenew = worktime-480+overtime
+    print('praca na dnes ukoncena; pracovna doba: ', min2str(worktime), '; saldo:', min2str(overtimenew))
+else:
+    todayend = 8*60 - worktime - overtime + laststart + lunchcorrection
+    print('dnes odchod, 0 saldo: ', min2str(todayend))
 
-todayend = 8*60 - worktime - overtime + laststart + lunchcorrection
-print('dnes odchod, 0 saldo: ', min2str(todayend))
+    todayend8hrs = 8*60 - worktime + laststart + lunchcorrection
+    print('dnes odchod, 8 hodin: ', min2str(todayend8hrs))
 
-todayend8hrs = 8*60 - worktime + laststart + lunchcorrection
-print('dnes odchod, 8 hodin: ', min2str(todayend8hrs))
 input()
