@@ -1,0 +1,42 @@
+<Item1>:
+    orientation: 'horizontal'
+    padding: (2, 2)
+    txt1 :""
+    txt2 :''
+    Label:
+        text: root.txt2
+        size_hint_x: 0.7
+        halign: 'left'
+    Label:
+        text: root.txt1
+        size_hint_x: 0.3
+        canvas.before:
+            Color:
+                rgba: 0.059, 0.220, 0.346, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+<MainV>:
+    BoxLayout:
+        orientation: 'vertical'
+        Item1:
+            txt1: 'aaa'
+            txt2: 'nadčas do včera'
+        Item1:
+            txt1: 'bbb'
+            txt2: 'dnes je'
+        Item1:
+            txt1: 'ccc'
+            txt2: 'obed dnes'
+        Item1:
+            txt1: 'ddd'
+            txt2: 'posledný príchod'
+        Item1:
+            txt1: 'eee'
+            txt2: 'pracovný čas do posledného príchodu'
+        Item1:
+            txt1: 'fff'
+            txt2: '0 saldo'
+        Item1:
+            txt1: 'ggg'
+            txt2: '8 hodnín'

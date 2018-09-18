@@ -69,7 +69,7 @@ class ron_data_extract():
         today1 = tree.xpath('//tr[@class="today "]/td/text()')
         print("dnes je: ", today1[0])
         today2 = tree.xpath('//tr/td/text()')
-        today3 = today1 #[0:5] #today2[6:10]
+        today3 = today1 #[0:4] #today2[6:10]
         #print('today2: ', today3)
 
         self.times = []
@@ -85,19 +85,29 @@ class ron_data_extract():
         'calculates todays wortime'
         self.worktime = 0
         print('analyza pracovneho casu:')
+        self.starts = ['Príchod / Práca', 'Vyjazd']
+        self.stops = ['Súkromne', 'Obed', 'Odchod']
+        a=0
+        b=0
         for i in range(len(self.operations)):            #counts worktime
-            if self.operations[i] == 'Príchod / Práca':
+            #if self.operations[i] == 'Príchod / Práca':
+            if a == 0 and (self.operations[i] in self.starts):
                 a = str2min(self.times[i])
                 self.laststart_index = i
                 print('   i:', i, 'a: ', a)
-            elif a != 0 and self.operations[i] != 'Príchod / Práca':
+            #elif a != 0 and self.operations[i] != 'Príchod / Práca':
+            elif a != 0:
                 b = str2min(self.times[i])
                 self.lastrecord_index = i
                 print('   i:', i, 'b: ', b)
                 self.worktime = self.worktime + b - a
-                a = 0
+                if self.operations[i] in self.starts:
+                    a = str2min(self.times[i])
+                    self.laststart_index = i
+                else:
+                    a = 0
                 b = 0
-        print('   pracovny cas do posledneho prichodu: ', min2str(self.worktime))
+        #print('   pracovny cas do posledneho prichodu: ', min2str(self.worktime))
         return self.worktime
     def get_lunch(self):
         'calculates lunch and its correction'
@@ -156,9 +166,10 @@ lunch, lunchcorrection = rde.get_lunch()
 laststart = rde.get_laststart()
 left = rde.check_leave()
 if left==True:
-    overtimenew = worktime-480+overtime
+    overtimenew = worktime-480+overtime-lunchcorrection
     print('praca na dnes ukoncena; pracovna doba: ', min2str(worktime), '; saldo:', min2str(overtimenew))
 else:
+    print('   pracovny cas do posledneho prichodu: ', min2str(worktime))
     todayend = 8*60 - worktime - overtime + laststart + lunchcorrection
     print('dnes odchod, 0 saldo: ', min2str(todayend))
 
