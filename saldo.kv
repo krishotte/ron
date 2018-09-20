@@ -7,6 +7,9 @@
         text: root.txt2
         size_hint_x: 0.7
         halign: 'left'
+        valign: 'middle'
+        text_size: self.size
+        padding: (10, 0)
     Label:
         text: root.txt1
         size_hint_x: 0.3
@@ -20,23 +23,23 @@
     BoxLayout:
         orientation: 'vertical'
         Item1:
-            txt1: 'aaa'
-            txt2: 'nadčas do včera'
+            txt1: root.field1_val
+            txt2: root.field1_lbl #'nadčas do včera'
         Item1:
-            txt1: 'bbb'
-            txt2: 'dnes je'
+            txt1: root.field2_val #'bbb'
+            txt2: root.field2_lbl #'dnes je'
         Item1:
-            txt1: 'ccc'
-            txt2: 'obed dnes'
+            txt1: root.field3_val #'ccc'
+            txt2: root.field3_lbl #'obed dnes'
         Item1:
-            txt1: 'ddd'
-            txt2: 'posledný príchod'
+            txt1: root.field4_val #'ddd'
+            txt2: root.field4_lbl #'posledný príchod'
         Item1:
-            txt1: 'eee'
-            txt2: 'pracovný čas do posledného príchodu'
-        Item1:
-            txt1: 'fff'
-            txt2: '0 saldo'
-        Item1:
-            txt1: 'ggg'
-            txt2: '8 hodnín'
+            txt1: root.field5_val #'eee'
+            txt2: root.field5_lbl #'pracovný čas do posledného príchodu'
+#        Item1:
+#            txt1: ''
+#            txt2: ''
+#        Item1:
+#            txt1: ''
+#            txt2: ''
