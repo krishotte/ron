@@ -1,3 +1,4 @@
+#:kivy 1.0.9
 <Item1>:
     orientation: 'horizontal'
     padding: (2, 2)
@@ -6,7 +7,7 @@
     Label:
         text: root.txt2
         size_hint_x: 0.7
-        halign: 'left'
+        halign: 'right'
         valign: 'middle'
         text_size: self.size
         padding: (10, 0)
@@ -19,8 +20,24 @@
             Rectangle:
                 pos: self.pos
                 size: self.size
+
+<Label2>:
+    text: 'reloading...'
+    color: 1, 0.25, 0.25, 1
+    font_size: '10dp'
+    size_hint: (None, None)
+    size: (self.texture_size[0]+8, self.texture_size[1]+6)
+    pos_hint: {'x':0.05, 'y':0.05}
+    canvas.before:
+        Color:
+            rgba: 0.3, 0, 0.1, 1 #0.059, 0.220, 0.346, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
 <MainV>:
     BoxLayout:
+        padding: (2, 2)
         orientation: 'vertical'
         Item1:
             txt1: root.field1_val
@@ -37,9 +54,4 @@
         Item1:
             txt1: root.field5_val #'eee'
             txt2: root.field5_lbl #'pracovný čas do posledného príchodu'
-#        Item1:
-#            txt1: ''
-#            txt2: ''
-#        Item1:
-#            txt1: ''
-#            txt2: ''
+ #   Label2:

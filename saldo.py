@@ -59,8 +59,12 @@ class ron_data_extract():
         self.leave = 0
     def get_overtime(self, tree):
         'gets overtime until today'
-        self.overtime_str = tree.xpath('//tr[@class="browsercolor2 mv_110"]/td[@class="hodiny"]/text()')[0]
-        self.overtime_mins = str2min(self.overtime_str)
+        try:
+            self.overtime_str = tree.xpath('//tr[@class="browsercolor2 mv_110"]/td[@class="hodiny"]/text()')[0]
+            self.overtime_mins = str2min(self.overtime_str)
+        except(IndexError):
+            self.overtime_mins = 0
+            self.overtime_str = '0'
         print('nadcas do vcera: ', self.overtime_str)
         return self.overtime_mins
     def analyze_day(self, tree):
