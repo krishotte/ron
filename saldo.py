@@ -1,7 +1,8 @@
 import requests
 from lxml import html
-import getpass
+#import getpass
 from os import path
+from bs4 import BeautifulSoup
 
 dir_path = path.dirname(path.realpath(__file__))        #directory where saldo.py sits
 file1 = open(dir_path + '\\pwd.txt', 'r')
@@ -33,8 +34,9 @@ def min2str(min1):
         strhrs = '-' + str(hrs)
     return strhrs+':'+str(mins).zfill(2)
 
+#requests + lxml
 class web_scrape():
-    'web scraping class'
+    'web scraping class using requests and lxml'
     def __init__(self):
         self.session_requests = requests.session()
     def get_tree(self, url, payload):
@@ -48,6 +50,7 @@ class web_scrape():
             data = payload,
             headers = dict(referer=url)
         )
+        print('scraping...')
         #print(self.result.text)
         self.tree = html.fromstring(self.result.content)
         return self.tree
@@ -155,7 +158,151 @@ class ron_data_extract():
             if self.operations[i] == 'Odchod':
                 self.left = True
         return self.left
-#main script
+
+#requests + beautifulsout
+class web_scrape_bs4():
+    'web scraping class using requests and beautifulsoup'
+    def __init__(self):
+        self.session_requests = requests.session()
+    def get_tree(self, url, payload):
+        """
+        gets html tree from url
+        provide(url, payload)
+            payload = dictionary of login data
+        """
+        self.result = self.session_requests.post(
+            url,
+            data = payload,
+            headers = dict(referer=url)
+        )
+        print('bs4 scraping...')
+        #print(self.result.text)
+        #self.tree = html.fromstring(self.result.content)
+        bs4_obj = BeautifulSoup(self.result.content, 'html.parser')
+        return bs4_obj #self.tree
+
+class data_extract_bs4():
+    'extracts data from bs4 object'
+    def __init__(self):
+        self.laststart = 0
+        self.leave = 0
+    def get_overtime(self, tree):
+        'gets overtime until today'
+        try:
+            a = tree.find('tr', 'browsercolor2 mv_110')
+            print(a)
+            b = a.find('td', 'hodiny')
+            print(b.get_text())
+            #self.overtime_str = tree.xpath('//tr[@class="browsercolor2 mv_110"]/td[@class="hodiny"]/text()')[0]
+            self.overtime_str = b.get_text()
+            self.overtime_mins = str2min(self.overtime_str)
+        except(IndexError, AttributeError):
+            self.overtime_mins = 0
+            self.overtime_str = '0'
+        print('nadcas do vcera: ', self.overtime_str)
+        return self.overtime_mins
+    def analyze_day(self, tree):
+        'decomposes day data and creates times and operations lists'
+        today2 = tree.find('table', 'browserdenni').find('tbody').find_all('tr')[1] #test choose table line to use
+        print('today2: ', today2)
+        #today1 = today2
+        today1 = tree.find('tr', 'today')  #uses today table line
+        today1a = today1.find_all('td')
+        print("dnes cely tag: ", today1 )
+        print('pocet prvkov: ', len(today1a))
+        for i in today1a:
+            print('prvok: ', i.get_text())
+        print('today1a: ', today1a[1].get_text())
+        self.today = today1a[0].find('span').next_element.next_element
+        print('dnes je: ', self.today)
+        self.times = []
+        self.operations = []
+        for i in range(1, len(today1a)):             #creates times and operations lists
+            print(i, ': ', today1a[i].get_text().split(' \xa0 '))
+            try:
+                a, b = today1a[i].get_text().split(' \xa0 ')
+                #a, b = rec.get_text().split(' &nbsp ')
+                self.times.append(a)
+                self.operations.append(b)
+            except(ValueError):
+                pass
+        print('analyza dna:')
+        print('   casy: ', self.times)
+        print('   operacie', self.operations)
+    def get_worktime(self):
+        'calculates todays wortime'
+        self.worktime = 0
+        print('analyza pracovneho casu:')
+        self.starts = ['Príchod / Práca', 'Vyjazd']
+        self.stops = ['Súkromne', 'Obed', 'Odchod']
+        a=0
+        b=0
+        for i in range(len(self.operations)):            #counts worktime
+            #if self.operations[i] == 'Príchod / Práca':
+            if a == 0 and (self.operations[i] in self.starts):
+                a = str2min(self.times[i])
+                self.laststart_index = i
+                print('   i:', i, 'a: ', a)
+            #elif a != 0 and self.operations[i] != 'Príchod / Práca':
+            elif a != 0:
+                b = str2min(self.times[i])
+                self.lastrecord_index = i
+                print('   i:', i, 'b: ', b)
+                self.worktime = self.worktime + b - a
+                if self.operations[i] in self.starts:
+                    a = str2min(self.times[i])
+                    self.laststart_index = i
+                else:
+                    a = 0
+                b = 0
+        #print('   pracovny cas do posledneho prichodu: ', min2str(self.worktime))
+        return self.worktime
+    def get_lunch(self):
+        'calculates lunch and its correction'
+        c = 0
+        d = 0
+        self.lunchcorrection = 0
+        for i in range(len(self.operations)):            
+            if self.operations[i] == 'Obed':
+                c = str2min(self.times[i])
+                obed_index = i
+            elif (c !=0 and self.operations[i] == 'Príchod / Práca') and d==0:
+                d = str2min(self.times[i])
+        if d > c:
+            self.lunch = d - c
+        else:
+            self.lunch = 30
+            self.lunchcorrection = 30
+        print('obed dnes: ', min2str(self.lunch))
+        if self.lunch < 30:
+            self.lunchcorrection = 30 - self.lunch
+        print('korekcia obedovej prestavky: ', min2str(self.lunchcorrection))
+        return self.lunch, self.lunchcorrection
+    def get_laststart(self):
+        try:
+            lasttime = self.times[self.laststart_index]
+        except (IndexError, AttributeError):
+            lasttime = '8:00'
+        try:
+            if (self.laststart_index <= self.lastrecord_index) and (self.operations[self.lastrecord_index] != 'Odchod'):
+                lasttime = self.times[self.lastrecord_index]
+                print('chyba prichod!')
+        except:
+            pass
+        print('posledny prichod: ', lasttime)
+        return str2min(lasttime)
+    def check_leave(self):
+        'checks if person left the work'
+        self.left = False
+        for i in range(len(self.operations)):            
+            if self.operations[i] == 'Odchod':
+                self.left = True
+        return self.left
+    def is_weekend(self, tree):
+        'tests if its weekend'
+        weekend = len(tree.find('table', 'browserdenni').find('tbody').find_all('tr', 'today', 'vikend'))
+        print('je vikend?: ', weekend)
+        return weekend
 
 def container():
     doch_url = 'http://ron.dqi.sk/ads.php?menuid=dochazkazamestnance'
@@ -185,4 +332,50 @@ def container():
 
     input()
 
+def test_requests1():
+    doch_url = 'http://ron.dqi.sk/ads.php?menuid=dochazkazamestnance'
+    month_res_url = 'http://ron.dqi.sk/ads.php?menuid=mesicnivysledky'
+    """wscr1 = web_scrape()
+    tree1 = wscr1.get_tree(month_res_url, payload)
+    rde1 = ron_data_extract()
+    #rde1.analyze_day(tree1)
+    rde1.get_overtime(tree1)"""
+    
+    wscr = web_scrape_bs4()
+    tree = wscr.get_tree(month_res_url, payload)
+    rde = data_extract_bs4()
+    
+    print(tree.prettify())
+    print('--------------------')
+    rde.get_overtime(tree)
+    print('...................')
+    tree = wscr.get_tree(doch_url, payload)
+    rde.analyze_day(tree)
+    """
+    print(tree.prettify())
+    #a = tree.find_parents('td', class='browser_rowheader')#, 'today')
+    a = tree.find_all('td', 'browser_rowheader')
+    print('.................')
+    for i in a:
+        print(i)
+    print(',,,,,,,,,,,,,,,,,')
+    #b = a[0].find_all('span')
+    #print('b' + str(b))
+    b = a[0].find_parents('tr')
+    print(b)
+    print('------------------')
+    c = b[0].find_all('td')
+    for i in c:
+        print(i)
+    """
+def test_weekend():
+    doch_url = 'http://ron.dqi.sk/ads.php?menuid=dochazkazamestnance'
+    wscr = web_scrape_bs4()
+    tree = wscr.get_tree(doch_url, payload)
+    rde = data_extract_bs4()
+    weekend = rde.is_weekend(tree)
+    print('weekend', weekend)
+
 #container()
+#test_requests1()
+#test_weekend()

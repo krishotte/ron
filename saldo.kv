@@ -36,7 +36,13 @@
             size: self.size
 
 <MainV>:
+    orientation: 'vertical'
+    Button:
+        text: 'reload'
+        on_release: root.run_bs4()
+        size_hint_y: 0.1
     BoxLayout:
+        size_hint_y: 0.5
         padding: (2, 2)
         orientation: 'vertical'
         Item1:
@@ -54,4 +60,6 @@
         Item1:
             txt1: root.field5_val #'eee'
             txt2: root.field5_lbl #'pracovný čas do posledného príchodu'
+    Label:
+        size_hint_y: 0.4
  #   Label2:
