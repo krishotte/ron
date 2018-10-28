@@ -1,11 +1,11 @@
 import requests
-from lxml import html
+#from lxml import html
 #import getpass
 from os import path
-from bs4 import BeautifulSoup
+#from bs4 import BeautifulSoup
 
 dir_path = path.dirname(path.realpath(__file__))        #directory where saldo.py sits
-file1 = open(dir_path + '\\pwd.txt', 'r')
+file1 = open(path.join(dir_path, 'pwd.txt'), 'r')
 password = file1.read()
 #password = getpass.getpass(prompt = 'heslo: ', stream=None)
 payload = {
@@ -159,11 +159,23 @@ class ron_data_extract():
                 self.left = True
         return self.left
 
-#requests + beautifulsout
-class web_scrape_bs4():
-    'web scraping class using requests and beautifulsoup'
-    def __init__(self):
+#requests + beautifulsoup
+class data_extract_bs4():
+    'extracts data from bs4 object'
+    from bs4 import BeautifulSoup
+    def __init__(self, data_dir):
         self.session_requests = requests.session()
+        self.laststart = 0
+        self.leave = 0
+        try:
+            file1 = open(path.join(data_dir, 'pwd.txt'), 'r')
+            password = file1.read()
+        except(FileNotFoundError):
+            password = ''
+        self.payload = {
+            'loginname': 'pkrssak',
+            'loginpassword': password
+        }
     def get_tree(self, url, payload):
         """
         gets html tree from url
@@ -178,14 +190,8 @@ class web_scrape_bs4():
         print('bs4 scraping...')
         #print(self.result.text)
         #self.tree = html.fromstring(self.result.content)
-        bs4_obj = BeautifulSoup(self.result.content, 'html.parser')
+        bs4_obj = self.BeautifulSoup(self.result.content, 'html.parser')
         return bs4_obj #self.tree
-
-class data_extract_bs4():
-    'extracts data from bs4 object'
-    def __init__(self):
-        self.laststart = 0
-        self.leave = 0
     def get_overtime(self, tree):
         'gets overtime until today'
         try:
@@ -203,15 +209,16 @@ class data_extract_bs4():
         return self.overtime_mins
     def analyze_day(self, tree):
         'decomposes day data and creates times and operations lists'
-        today2 = tree.find('table', 'browserdenni').find('tbody').find_all('tr')[1] #test choose table line to use
-        print('today2: ', today2)
-        #today1 = today2
-        today1 = tree.find('tr', 'today')  #uses today table line
+        today2 = tree.find('table', 'browserdenni').find('tbody').find_all('tr')[1] #choose table line to use in test
+        #print('today2: ', today2)
+        #today1 = today2                    #uses chosen table line
+        today1 = tree.find('tr', 'today')   #uses today table line
         today1a = today1.find_all('td')
-        print("dnes cely tag: ", today1 )
+        #today1a = today1a[0:4]             #slice array for testing purposes
+        print("dnes, cely tag: ", today1 )
         print('pocet prvkov: ', len(today1a))
         for i in today1a:
-            print('prvok: ', i.get_text())
+            print('   prvok: ', i.get_text())
         print('today1a: ', today1a[1].get_text())
         self.today = today1a[0].find('span').next_element.next_element
         print('dnes je: ', self.today)
@@ -221,7 +228,6 @@ class data_extract_bs4():
             print(i, ': ', today1a[i].get_text().split(' \xa0 '))
             try:
                 a, b = today1a[i].get_text().split(' \xa0 ')
-                #a, b = rec.get_text().split(' &nbsp ')
                 self.times.append(a)
                 self.operations.append(b)
             except(ValueError):
