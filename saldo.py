@@ -21,7 +21,6 @@ def str2min(str1):
     else:
         mintotal = int(min1)*60+int(min2)
     return mintotal
-
 def min2str(min1):
     'converts minutes to hour string'
     if min1 >= 0:
@@ -54,7 +53,6 @@ class web_scrape():
         #print(self.result.text)
         self.tree = html.fromstring(self.result.content)
         return self.tree
-
 class ron_data_extract():
     'extracts data from html tree'
     def __init__(self):
@@ -306,10 +304,12 @@ class data_extract_bs4():
         return self.left
     def is_weekend(self, tree):
         'tests if its weekend'
-        weekend = len(tree.find('table', 'browserdenni').find('tbody').find_all('tr', 'today', 'vikend'))
+        weekend = len(tree.find('table', 'browserdenni').find('tbody').find_all('tr', class_='today browser_row_high vikend'))#, 'vikend'))
+        print('je vikend?, tag: ', tree.find('table', 'browserdenni').find('tbody').find_all('tr', class_='today browser_row_high vikend'))
         print('je vikend?: ', weekend)
         return weekend
 
+#testing functions
 def container():
     doch_url = 'http://ron.dqi.sk/ads.php?menuid=dochazkazamestnance'
     month_res_url = 'http://ron.dqi.sk/ads.php?menuid=mesicnivysledky'
@@ -337,48 +337,24 @@ def container():
         print('dnes odchod, 8 hodin: ', min2str(todayend8hrs))
 
     input()
-
 def test_requests1():
     doch_url = 'http://ron.dqi.sk/ads.php?menuid=dochazkazamestnance'
     month_res_url = 'http://ron.dqi.sk/ads.php?menuid=mesicnivysledky'
-    """wscr1 = web_scrape()
-    tree1 = wscr1.get_tree(month_res_url, payload)
-    rde1 = ron_data_extract()
-    #rde1.analyze_day(tree1)
-    rde1.get_overtime(tree1)"""
     
-    wscr = web_scrape_bs4()
-    tree = wscr.get_tree(month_res_url, payload)
-    rde = data_extract_bs4()
+    rde = data_extract_bs4('pwd.txt')
+    tree = rde.get_tree(month_res_url, payload)
     
     print(tree.prettify())
     print('--------------------')
     rde.get_overtime(tree)
     print('...................')
-    tree = wscr.get_tree(doch_url, payload)
+    tree = rde.get_tree(doch_url, payload)
     rde.analyze_day(tree)
-    """
-    print(tree.prettify())
-    #a = tree.find_parents('td', class='browser_rowheader')#, 'today')
-    a = tree.find_all('td', 'browser_rowheader')
-    print('.................')
-    for i in a:
-        print(i)
-    print(',,,,,,,,,,,,,,,,,')
-    #b = a[0].find_all('span')
-    #print('b' + str(b))
-    b = a[0].find_parents('tr')
-    print(b)
-    print('------------------')
-    c = b[0].find_all('td')
-    for i in c:
-        print(i)
-    """
 def test_weekend():
     doch_url = 'http://ron.dqi.sk/ads.php?menuid=dochazkazamestnance'
-    wscr = web_scrape_bs4()
-    tree = wscr.get_tree(doch_url, payload)
-    rde = data_extract_bs4()
+    rde = data_extract_bs4('pwd.txt')
+    tree = rde.get_tree(doch_url, payload)
+    
     weekend = rde.is_weekend(tree)
     print('weekend', weekend)
 
