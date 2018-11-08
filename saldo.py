@@ -17,7 +17,8 @@ def str2min(str1):
     'converts string to min int' 
     min1,min2 = str1.split(':')
     if str1[0] == '-':
-        mintotal = -(int(min1)*60+int(min2))
+        #mintotal = -(int(min1)*60+int(min2))
+        mintotal = int(min1)*60-int(min2)
     else:
         mintotal = int(min1)*60+int(min2)
     return mintotal
@@ -203,7 +204,7 @@ class data_extract_bs4():
         except(IndexError, AttributeError):
             self.overtime_mins = 0
             self.overtime_str = '0'
-        print('nadcas do vcera: ', self.overtime_str)
+        print('nadcas do vcera: ', self.overtime_str, ' mins: ', self.overtime_mins)
         return self.overtime_mins
     def analyze_day(self, tree):
         'decomposes day data and creates times and operations lists'
@@ -357,7 +358,10 @@ def test_weekend():
     
     weekend = rde.is_weekend(tree)
     print('weekend', weekend)
+def test_str2min():
+    print(str2min('-1:36'))
 
 #container()
 #test_requests1()
 #test_weekend()
+#test_str2min()
